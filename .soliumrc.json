@@ -1,0 +1,11 @@
+{
+  "extends": "solium:recommended",
+  "plugins": ["security"],
+  "rules": {
+    "security/no-call-value": "off",
+    "security/no-low-level-calls": "off",
+    "quotes": ["error", "single"],
+    "indentation": ["error", 2],
+    "linebreak-style": ["error", "unix"]
+  }
+}

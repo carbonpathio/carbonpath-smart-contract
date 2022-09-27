@@ -1,6 +1,9 @@
 name: Quality checks
 
-on: pull_request
+on: 
+  push:
+    branches:
+      - master
 
 jobs:
   test-contract:
@@ -20,12 +23,12 @@ jobs:
         run: |
           yarn global add ethlint
           yarn install --prefer-offline --non-interactive
-          solium -f contracts/EQTradable.sol 
-          yarn build
+          solium -d contracts 
+          yarn compile
           yarn test
         env:
           MNEMONIC_CELO: sample
-          CP_FEE_ADDRESS: 0xfCd83873A6D58921f39E8dA3de98E21B5235B66B
-          BUFFER_ADDRESS: 0xe3bBb9d05cC964dbfcF2C213415DA2e495F24B03
-          NONPROFIT_ADDRESS: 0xE39925702E2abbbB2A617e2Bd4595aBe38b2aA89
-          STABLE_TOKEN_ADDRESS: 0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1
+          CP_FEE_ADDRESS: '0xfCd83873A6D58921f39E8dA3de98E21B5235B66B'
+          BUFFER_ADDRESS: '0xe3bBb9d05cC964dbfcF2C213415DA2e495F24B03'
+          NONPROFIT_ADDRESS: '0xE39925702E2abbbB2A617e2Bd4595aBe38b2aA89'
+          STABLE_TOKEN_ADDRESS: '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1'
