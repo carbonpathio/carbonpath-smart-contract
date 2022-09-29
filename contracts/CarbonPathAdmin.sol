@@ -53,7 +53,7 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
   }
 
   function _calculateStableTokenAmount(uint256 cpAmount) private pure returns (uint256) {
-    return cpAmount * EXCHANGE_RATE * 1 ether;
+    return cpAmount * EXCHANGE_RATE;
   }
 
   /**
