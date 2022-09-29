@@ -321,7 +321,7 @@ describe('CarbonPathAdmin', function () {
     it('successful buy', async function () {
       const [owner, sellerAddr, buyerAddr] = await ethers.getSigners()
       await this.token.connect(sellerAddr).increaseAllowance(this.admin.address, 10)
-      const amountPow = new BigNumber(30).multipliedBy(new BigNumber(10).pow(18)).toString() // Stable Token has 18 decimals
+      const amountPow = 30
 
       await this.stableToken.connect(buyerAddr).increaseAllowance(this.admin.address, amountPow)
       await this.token.mint(sellerAddr.address, 10)
