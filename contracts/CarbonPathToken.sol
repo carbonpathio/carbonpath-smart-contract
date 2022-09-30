@@ -9,7 +9,7 @@ import '@openzeppelin/contracts/access/AccessControl.sol';
 /**
  * @title CarbonPath Token
  */
-contract CarbonPathToken is AccessControl, Pausable, ERC20 {
+contract CarbonPathToken is AccessControl, ERC20 {
   bytes32 private constant MINTER_ROLE = keccak256('MINTER_ROLE');
 
   constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {

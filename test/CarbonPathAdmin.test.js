@@ -129,6 +129,49 @@ describe('CarbonPathAdmin', function () {
     })
   })
 
+  describe('Update Token URI', function () {
+    beforeEach(async function () {
+      const [owner, cpFeeAddr, bufferAddr, nonProfitAddr, operatorAddr] = await ethers.getSigners()
+
+      await this.admin.setCpFeeAddress(cpFeeAddr.address)
+      await this.admin.setNonProfitAddress(nonProfitAddr.address)
+      await this.admin.setBufferPoolAddress(bufferAddr.address)
+
+      await this.admin.mint(
+        owner.address,
+        20,
+        250,
+        20,
+        operatorAddr.address,
+        'http://localhost/token/0/',
+        JSON.stringify(metadata),
+        JSON.stringify(GEOJSON1)
+      )
+    })
+
+    it('only minter address can update URI', async function () {
+      const [owner, addr1] = await ethers.getSigners()
+      await expect(this.admin.connect(addr1).updateTokenURI(0, 'test')).to.be.revertedWith(
+        'CarbonPathAdmin: must have minter role to update URI'
+      )
+    })
+
+    it('can only update minted NFTs', async function () {
+      const [owner, addr1] = await ethers.getSigners()
+      await expect(this.admin.updateTokenURI(1, 'test')).to.be.revertedWith(
+        'ERC721: invalid token ID'
+      )
+    })
+
+    it('sucessful update', async function () {
+      const [owner, addr1] = await ethers.getSigners()
+      await this.admin.updateTokenURI(0, 'test')
+
+      const tokenURI = await this.nft.tokenURI(0)
+      expect(tokenURI).to.be.equal('test')
+    })
+  })
+
   describe('Retire NFT', function () {
     beforeEach(async function () {
       const [owner, cpFeeAddr, bufferAddr, nonProfitAddr, operatorAddr] = await ethers.getSigners()
