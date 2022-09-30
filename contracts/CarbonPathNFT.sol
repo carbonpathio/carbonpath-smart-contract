@@ -23,15 +23,9 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
     uint256 retiredEAVs;
   }
 
-  struct EcologicalIndex {
-    string indexType;
-    int256 indexValue;
-  }
-
   Counters.Counter private _tokenIdCounter;
 
   mapping(uint256 => string) private geoJson; // mapping of tokenId to geoJson
-  mapping(uint256 => EcologicalIndex) private ecologicalIndexMap;
   mapping(uint256 => string) private metadata; // mapping of tokenId to metadata
   mapping(uint256 => EAVTokens) private eavTokens; // mapping of tokenId to number of EAVTokens
 
@@ -49,23 +43,21 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
   }
 
   /**
+   * @dev Returns whether `address` is allowed to manage `tokenId`.
+   *
+   * Requirements:
+   * - `tokenId` must exist.
+   */
+  function _isAdminOrOwner(address spender, uint256 tokenId) internal view returns (bool) {
+    return (_isApprovedOrOwner(spender, tokenId) || spender == _adminAddress);
+  }
+
+  /**
    * @dev Returns the market address set via {setAdminAddress}.
    *
    */
   function getAdminAddress() public view returns (address adminAddress) {
     return _adminAddress;
-  }
-
-  /**
-   * @dev Set a new admin address.
-   *
-   * Requirements:
-   * - the caller must be the owner.
-   */
-  function setAdminAddress(address adminAddress) public onlyOwner {
-    require(adminAddress != address(0), 'CarbonPathNFT: zero address for admin');
-
-    _adminAddress = adminAddress;
   }
 
   /**
@@ -101,14 +93,6 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
   }
 
   /**
-   * @dev Returns the EcologicalIndex stored in the tokenId
-   *
-   */
-  function getEcologicalIndex(uint256 tokenId) public view returns (EcologicalIndex memory) {
-    return ecologicalIndexMap[tokenId];
-  }
-
-  /**
    * @dev Returns the metadata stored in the tokenId
    *
    */
@@ -117,43 +101,37 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
   }
 
   /**
-   * @dev Set the metadata for a tokenId.
+   * @dev Set a new admin address.
    *
    * Requirements:
    * - the caller must be the owner.
    */
-  function setMetadata(uint256 tokenId, string memory _metadata) external onlyOwner {
+  function setAdminAddress(address adminAddress) public onlyOwner {
+    require(adminAddress != address(0), 'CarbonPathNFT: zero address for admin');
+
+    _adminAddress = adminAddress;
+  }
+
+  /**
+   * @dev Set the metadata for a tokenId.
+   *
+   * Requirements:
+   * - the caller must be the owner or an admin
+   */
+  function setMetadata(uint256 tokenId, string memory _metadata) external {
+    require(_isAdminOrOwner(_msgSender(), tokenId), 'CarbonPathNFT: must be an admin or an owner');
     metadata[tokenId] = _metadata;
   }
 
   /**
-   * @dev Set the ecological index for a tokenId.
+   * @dev Set the tokenURI for a tokenId.
    *
    * Requirements:
    * - the caller must be the owner.
    */
-  function setEcologicalIndex(
-    uint256 _tokenId,
-    string memory _indexType,
-    int256 _indexValue
-  ) external onlyOwner {
-    EcologicalIndex storage ecologicalIndex = ecologicalIndexMap[_tokenId];
-    ecologicalIndex.indexType = _indexType;
-    ecologicalIndex.indexValue = _indexValue;
-  }
-
-  /**
-   * @dev Returns whether `spender` is allowed to manage `tokenId`.
-   *
-   * Requirements:
-   * - `tokenId` must exist.
-   */
-  function _isApprovedOrOwnerOrAdmin(address spender, uint256 tokenId)
-    internal
-    view
-    returns (bool)
-  {
-    return (_isApprovedOrOwner(spender, tokenId) || spender == _adminAddress);
+  function setTokenURI(uint256 tokenId, string memory tokenUri) external {
+    require(_isAdminOrOwner(_msgSender(), tokenId), 'CarbonPathNFT: must be an admin or an owner');
+    super._setTokenURI(tokenId, tokenUri);
   }
 
   /**

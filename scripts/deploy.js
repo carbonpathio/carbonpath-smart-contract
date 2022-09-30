@@ -10,7 +10,7 @@ async function main() {
   const CarbonPathAdminFactory = await ethers.getContractFactory('CarbonPathAdmin')
   const CarbonPathTokenFactory = await ethers.getContractFactory('CarbonPathToken')
 
-  const CarbonPathToken = await CarbonPathTokenFactory.deploy('Carbon Path Token', '$CPC02e')
+  const CarbonPathToken = await CarbonPathTokenFactory.deploy('CarbonPathToken', '$CPC02e')
   console.log('Carbon Path Token Address: ', CarbonPathToken.address)
 
   const CarbonPathNFT = await CarbonPathNFTFactory.deploy(deployer.address)

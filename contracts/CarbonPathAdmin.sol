@@ -167,6 +167,21 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
   }
 
   /**
+   * @dev updates the token URI of a minted token
+   *
+   * Requirements:
+   * - the caller must have the `MINTER_ROLE`.
+   */
+  function updateTokenURI(uint256 tokenId, string memory tokenUri) public virtual nonReentrant {
+    require(
+      hasRole(MINTER_ROLE, _msgSender()),
+      'CarbonPathAdmin: must have minter role to update URI'
+    );
+
+    carbonPathNFT.setTokenURI(tokenId, tokenUri);
+  }
+
+  /**
    * @dev Retire the carbon token for a well
    *
    */

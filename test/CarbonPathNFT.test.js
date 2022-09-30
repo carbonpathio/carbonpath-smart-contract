@@ -124,4 +124,36 @@ describe('CarbonPathNFT', function () {
       expect(retiredAmount).to.be.equal(19)
     })
   })
+
+  describe('Update Token URI', function () {
+    beforeEach(async function () {
+      const [owner] = await ethers.getSigners()
+      await this.nft.mint(
+        owner.address,
+        20,
+        10,
+        'http://localhost/token/0/',
+        JSON.stringify(metadata),
+        JSON.stringify(GEOJSON1)
+      )
+    })
+
+    it("can't be called by an address that's not an admin", async function () {
+      const [owner, addr1] = await ethers.getSigners()
+      await expect(this.nft.connect(addr1).setTokenURI(0, 'test')).to.be.revertedWith(
+        'CarbonPathNFT: must be an admin or an owner'
+      )
+    })
+
+    it('cannot update if the token is not yet minted', async function () {
+      await expect(this.nft.setTokenURI(1, 'test')).to.be.revertedWith('ERC721: invalid token ID')
+    })
+
+    it('successful change', async function () {
+      await this.nft.setTokenURI(0, 'test')
+
+      const tokenURI = await this.nft.tokenURI(0)
+      expect(tokenURI).to.be.equal('test')
+    })
+  })
 })
