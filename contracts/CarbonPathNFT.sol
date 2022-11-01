@@ -2,15 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.17;
 
-import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol';
-import '@openzeppelin/contracts/utils/Counters.sol';
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title Carbon Path NFT
  */
-contract CarbonPathNFT is Ownable, ERC721URIStorage {
+contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
   using SafeMath for uint256;
   using Counters for Counters.Counter;
 
@@ -29,8 +30,8 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
   mapping(uint256 => string) private metadata; // mapping of tokenId to metadata
   mapping(uint256 => EAVTokens) private eavTokens; // mapping of tokenId to number of EAVTokens
 
-  constructor(address adminAddress) ERC721('Carbon Path NFT', '$CPNFT') {
-    require(adminAddress != address(0), 'CarbonPathNFT: zero address for admin');
+  constructor(address adminAddress) ERC721("Carbon Path NFT", "$CPNFT") {
+    require(adminAddress != address(0), "CarbonPathNFT: zero address for admin");
     _adminAddress = adminAddress;
   }
 
@@ -38,7 +39,7 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
    * @dev Require that the call came from the admin address.
    */
   modifier onlyAdmin() {
-    require(_msgSender() == _adminAddress, 'CarbonPathNFT: caller is not the admin');
+    require(_msgSender() == _adminAddress, "CarbonPathNFT: caller is not the admin");
     _;
   }
 
@@ -107,7 +108,7 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
    * - the caller must be the owner.
    */
   function setAdminAddress(address adminAddress) public onlyOwner {
-    require(adminAddress != address(0), 'CarbonPathNFT: zero address for admin');
+    require(adminAddress != address(0), "CarbonPathNFT: zero address for admin");
 
     _adminAddress = adminAddress;
   }
@@ -118,8 +119,8 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
    * Requirements:
    * - the caller must be the owner or an admin
    */
-  function setMetadata(uint256 tokenId, string memory _metadata) external {
-    require(_isAdminOrOwner(_msgSender(), tokenId), 'CarbonPathNFT: must be an admin or an owner');
+  function setMetadata(uint256 tokenId, string calldata _metadata) external {
+    require(_isAdminOrOwner(_msgSender(), tokenId), "CarbonPathNFT: must be an admin or an owner");
     metadata[tokenId] = _metadata;
   }
 
@@ -130,7 +131,8 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
    * - the caller must be the owner.
    */
   function setTokenURI(uint256 tokenId, string memory tokenUri) external {
-    require(_isAdminOrOwner(_msgSender(), tokenId), 'CarbonPathNFT: must be an admin or an owner');
+    require(_isAdminOrOwner(_msgSender(), tokenId), "CarbonPathNFT: must be an admin or an owner");
+    require(bytes(tokenUri).length > 0, "CarbonPathNFT: uri should be set");
     super._setTokenURI(tokenId, tokenUri);
   }
 
@@ -148,8 +150,8 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
     string memory tokenUri,
     string memory _metadata,
     string memory _geoJson
-  ) public virtual onlyAdmin {
-    require(bytes(tokenUri).length > 0, 'CarbonPathNFT: uri should be set');
+  ) public virtual nonReentrant onlyAdmin {
+    require(bytes(tokenUri).length > 0, "CarbonPathNFT: uri should be set");
     uint256 tokenId = _tokenIdCounter.current();
 
     //set metadata , geoJSON and number of EAVs
@@ -159,9 +161,9 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
     eavTokens[tokenId].bufferPoolEAVs = bufferAmount;
     eavTokens[tokenId].retiredEAVs = 0;
 
+    _tokenIdCounter.increment();
     super._safeMint(to, tokenId);
     super._setTokenURI(tokenId, tokenUri);
-    _tokenIdCounter.increment();
   }
 
   /**
@@ -171,12 +173,14 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
    * - Only the admin address can update
    */
   function updateRetiredEAVs(uint256 tokenId, uint256 retiredAmount) public virtual onlyAdmin {
+    EAVTokens storage eavs = eavTokens[tokenId];
+    uint256 totalRetired = eavs.retiredEAVs + retiredAmount;
+
     require(
-      eavTokens[tokenId].advanceEAVs + eavTokens[tokenId].bufferPoolEAVs >=
-        eavTokens[tokenId].retiredEAVs + retiredAmount,
-      'CarbonPathNFT: retired amount will exceed minted amount'
+      eavs.advanceEAVs + eavs.bufferPoolEAVs >= totalRetired,
+      "CarbonPathNFT: retired amount will exceed minted amount"
     );
 
-    eavTokens[tokenId].retiredEAVs += retiredAmount;
+    eavs.retiredEAVs = totalRetired;
   }
 }

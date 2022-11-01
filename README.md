@@ -7,7 +7,7 @@ yarn
 ## Run lint checker
 
 ```bash
-npx ethlint -d contracts
+yarn lint
 ```
 
 
