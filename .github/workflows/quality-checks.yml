@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  pull_request:
 
 jobs:
   test-contract:
@@ -21,9 +22,8 @@ jobs:
          apt-get install -y jq
       - name: Run test
         run: |
-          yarn global add ethlint
           yarn install --prefer-offline --non-interactive
-          solium -d contracts 
+          yarn lint
           yarn compile
           yarn test
         env:

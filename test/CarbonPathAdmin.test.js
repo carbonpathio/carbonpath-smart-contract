@@ -324,6 +324,43 @@ describe('CarbonPathAdmin', function () {
       const afterWithdrawSeller = await this.token.balanceOf(sellerAddr.address)
       expect(afterWithdrawSeller).to.be.equal(5)
     })
+    
+    it('transfer seller address', async function () {
+      const [owner, sellerAddr, transferAddress] = await ethers.getSigners()
+      await this.token.connect(sellerAddr).increaseAllowance(this.admin.address, 10)
+      await this.token.mint(sellerAddr.address, 10)
+      await this.admin.connect(sellerAddr).sell(10)
+
+      expect(await this.token.balanceOf(this.admin.address)).to.be.equal(10)
+      expect(await this.token.balanceOf(sellerAddr.address)).to.be.equal(0)
+
+      await this.admin.setSellerAddress(transferAddress.address)
+
+      // Token should have been returned back to the old seller
+      expect(await this.token.balanceOf(this.admin.address)).to.be.equal(0)
+      expect(await this.token.balanceOf(sellerAddr.address)).to.be.equal(10)
+    })
+
+    it('transfer seller address no token sold', async function () {
+      const [owner, sellerAddr, transferAddress] = await ethers.getSigners()
+      await this.token.connect(sellerAddr).increaseAllowance(this.admin.address, 10)
+      await this.token.mint(sellerAddr.address, 10)
+      await this.admin.connect(sellerAddr).sell(10)
+
+      expect(await this.token.balanceOf(this.admin.address)).to.be.equal(10)
+      expect(await this.token.balanceOf(sellerAddr.address)).to.be.equal(0)
+
+      await this.admin.setSellerAddress(transferAddress.address)
+
+      // Token should have been returned back to the old seller
+      expect(await this.token.balanceOf(this.admin.address)).to.be.equal(0)
+      expect(await this.token.balanceOf(sellerAddr.address)).to.be.equal(10)
+
+      await this.admin.setSellerAddress(sellerAddr.address)
+
+      expect(await this.token.balanceOf(this.admin.address)).to.be.equal(0)
+      expect(await this.token.balanceOf(transferAddress.address)).to.be.equal(0)
+    })
   })
 
   describe('Buy Tokens', function () {

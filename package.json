@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "lint": "solhint 'contracts/**/*.sol'",
     "compile": "hardhat compile",
     "deploy": "hardhat run scripts/deploy.js --network",
     "test": "hardhat test"
