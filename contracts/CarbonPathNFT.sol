@@ -153,13 +153,15 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
   ) public virtual nonReentrant onlyAdmin {
     require(bytes(tokenUri).length > 0, "CarbonPathNFT: uri should be set");
     uint256 tokenId = _tokenIdCounter.current();
+    EAVTokens storage eavs = eavTokens[tokenId];
 
     //set metadata , geoJSON and number of EAVs
     metadata[tokenId] = _metadata;
     geoJson[tokenId] = _geoJson;
-    eavTokens[tokenId].advanceEAVs = advanceAmount;
-    eavTokens[tokenId].bufferPoolEAVs = bufferAmount;
-    eavTokens[tokenId].retiredEAVs = 0;
+
+    eavs.advanceEAVs = advanceAmount;
+    eavs.bufferPoolEAVs = bufferAmount;
+    eavs.retiredEAVs = 0;
 
     _tokenIdCounter.increment();
     super._safeMint(to, tokenId);
