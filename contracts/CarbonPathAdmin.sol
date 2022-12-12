@@ -209,6 +209,21 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
   }
 
   /**
+   * @dev updates the metadata of a minted token
+   *
+   * Requirements:
+   * - the caller must have the `MINTER_ROLE`.
+   */
+  function updateMetadata(uint256 tokenId, string calldata metadata) public virtual nonReentrant {
+    require(
+      hasRole(MINTER_ROLE, _msgSender()),
+      "CarbonPathAdmin: must have minter role to update Metadata"
+    );
+
+    carbonPathNFT.setMetadata(tokenId, metadata);
+  }
+
+  /**
    * @dev Retire the carbon token for a well
    *
    */

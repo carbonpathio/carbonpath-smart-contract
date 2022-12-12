@@ -30,7 +30,7 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
   mapping(uint256 => string) private metadata; // mapping of tokenId to metadata
   mapping(uint256 => EAVTokens) private eavTokens; // mapping of tokenId to number of EAVTokens
 
-  constructor(address adminAddress) ERC721("Carbon Path NFT", "$CPNFT") {
+  constructor(address adminAddress) ERC721("Carbon Path NFT", "CPNFT") {
     require(adminAddress != address(0), "CarbonPathNFT: zero address for admin");
     _adminAddress = adminAddress;
   }
@@ -130,7 +130,7 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
    * Requirements:
    * - the caller must be the owner.
    */
-  function setTokenURI(uint256 tokenId, string memory tokenUri) external {
+  function setTokenURI(uint256 tokenId, string calldata tokenUri) external {
     require(_isAdminOrOwner(_msgSender(), tokenId), "CarbonPathNFT: must be an admin or an owner");
     require(bytes(tokenUri).length > 0, "CarbonPathNFT: uri should be set");
     super._setTokenURI(tokenId, tokenUri);
