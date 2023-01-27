@@ -1,13 +1,20 @@
 // test/CarbonPathToken.test.js
-const { expect } = require('chai')
+const { expect } = require('chai');
+const { ethers } = require('hardhat');
+const { signMetaTxRequest } = require("./metatransaction/signer");
+
+
 
 describe('CarbonPathToken', () => {
   before(async function () {
     this.StableToken = await ethers.getContractFactory('CarbonPathToken')
+    this.MinimalForwarder = await ethers.getContractFactory('MinimalForwarder')
   })
 
   beforeEach(async function () {
-    this.stableToken = await this.StableToken.deploy('test', '$TEST')
+    this.forwarder = await this.MinimalForwarder.deploy();
+    this.stableToken = await this.StableToken.deploy('test', '$TEST', this.forwarder.address)
+
   })
 
   describe('Mint', function () {
@@ -98,4 +105,30 @@ describe('CarbonPathToken', () => {
       )
     })
   })
+
+  
+  describe('Update Allowance', function () {
+    it('increase allowance directly', async function () {
+      const [owner, addr1, addr2] = await ethers.getSigners()
+      await this.stableToken.connect(addr1).increaseAllowance(addr2.address, 1)
+      expect(await this.stableToken.allowance(addr1.address,addr2.address)).to.equal(1)
+    })
+
+    it('increase allowance via meta-tx', async function () {
+      const [owner, addr1, addr2,  relayer] = await ethers.getSigners()
+      const forwarder = this.forwarder.connect(relayer);
+      const stableToken = this.stableToken;
+
+      const { request, signature } = await signMetaTxRequest(addr1.provider, forwarder, {
+        from: addr1.address,
+        to: stableToken.address,
+        data: stableToken.interface.encodeFunctionData('increaseAllowance', [addr2.address, 1]),
+      });
+      
+      await forwarder.execute(request, signature).then(tx => tx.wait());
+      expect(await this.stableToken.allowance(addr1.address,addr2.address)).to.equal(1)
+    })
+  })
 })
+
+

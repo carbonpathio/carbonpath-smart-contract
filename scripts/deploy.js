@@ -5,24 +5,29 @@ require('dotenv').config({ path: '../.env' })
 async function main() {
   const [deployer] = await ethers.getSigners()
   const { CP_FEE_ADDRESS, BUFFER_ADDRESS, NONPROFIT_ADDRESS, STABLE_TOKEN_ADDRESS } = process.env
-
+  const MinimalForwarderFactory = await ethers.getContractFactory('MinimalForwarder')
   const CarbonPathNFTFactory = await ethers.getContractFactory('CarbonPathNFT')
   const CarbonPathAdminFactory = await ethers.getContractFactory('CarbonPathAdmin')
   const CarbonPathTokenFactory = await ethers.getContractFactory('CarbonPathToken')
 
-  const CarbonPathToken = await CarbonPathTokenFactory.deploy('CarbonPathToken', 'CPC02')
-  console.log('Carbon Path Token Address: ', CarbonPathToken.address)
+
+  const MinimalForwarder = await MinimalForwarderFactory.deploy()
+  console.log('MINIMAL_FORWARDER_ADDRESS=', MinimalForwarder.address)
+
+  const CarbonPathToken = await CarbonPathTokenFactory.deploy('CarbonPathToken', 'CPC02', MinimalForwarder.address)
+  console.log('CARBON_PATH_TOKEN_ADDRESS=', CarbonPathToken.address)
 
   const CarbonPathNFT = await CarbonPathNFTFactory.deploy(deployer.address)
-  console.log('Carbon Path NFT Address: ', CarbonPathNFT.address)
+  console.log('CARBON_PATH_NFT_ADDRESS=', CarbonPathNFT.address)
 
   const CarbonPathAdmin = await CarbonPathAdminFactory.deploy(
     CarbonPathNFT.address,
     CarbonPathToken.address,
-    STABLE_TOKEN_ADDRESS
+    STABLE_TOKEN_ADDRESS,
+    MinimalForwarder.address
   )
 
-  console.log('Carbon Path Admin Address: ', CarbonPathAdmin.address)
+  console.log('CARBON_PATH_ADMIN_ADDRESS=', CarbonPathAdmin.address)
 
   await CarbonPathNFT.setAdminAddress(CarbonPathAdmin.address)
   console.log('Admin has been linked to the NFT')

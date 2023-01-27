@@ -1,23 +1,26 @@
-// test/CarbonPathNFT.test.js
+// test/CarbonPathAdmin.test.js
 const { expect } = require('chai')
-const BigNumber = require('bignumber.js')
+const { ethers } = require('hardhat');
 const metadata = require('./data/mockData.json')
 const GEOJSON1 = require('./data/GEOJSON1.json')
+const { signMetaTxRequest } = require("./metatransaction/signer");
 
 describe('CarbonPathAdmin', function () {
   before(async function () {
+    this.MinimalForwarder = await ethers.getContractFactory('MinimalForwarder')
     this.StableToken = await ethers.getContractFactory('MockStableToken')
     this.Token = await ethers.getContractFactory('CarbonPathToken')
     this.Admin = await ethers.getContractFactory('CarbonPathAdmin')
     this.NFT = await ethers.getContractFactory('CarbonPathNFT')
+
   })
 
   beforeEach(async function () {
     const [owner] = await ethers.getSigners()
-
+    this.forwarder = await this.MinimalForwarder.deploy();
     this.stableToken = await this.StableToken.deploy()
 
-    this.token = await this.Token.deploy('test', '$TEST')
+    this.token = await this.Token.deploy('test', '$TEST', this.forwarder.address)
 
     this.nft = await this.NFT.deploy(owner.address)
     await this.nft.deployed()
@@ -25,7 +28,8 @@ describe('CarbonPathAdmin', function () {
     this.admin = await this.Admin.deploy(
       this.nft.address,
       this.token.address,
-      this.stableToken.address
+      this.stableToken.address,
+      this.forwarder.address
     )
     await this.admin.deployed()
 
@@ -263,6 +267,35 @@ describe('CarbonPathAdmin', function () {
       await this.token.connect(operatorAddr).increaseAllowance(this.admin.address, 15)
 
       await this.admin.connect(operatorAddr).retire(0, 15)
+      const remainingBalance = await this.token.balanceOf(operatorAddr.address)
+      expect(remainingBalance).to.be.equal(0)
+
+      const totalSupply = await this.token.totalSupply()
+      expect(totalSupply).to.be.equal(25) // burned 15 tokens
+    })
+
+    it('successful retire via meta-tx', async function () {
+      const [owner, cpFeeAddr, bufferAddr, nonProfitAddr, operatorAddr, relayer] = await ethers.getSigners()
+      const forwarder = this.forwarder.connect(relayer);
+      const token = this.token;
+
+      // Allows the market to burn 15 CP coins
+      const { request:requestAllowance, signature:signatureAllowance } = await signMetaTxRequest(operatorAddr.provider, forwarder, {
+        from: operatorAddr.address,
+        to:  token.address,
+        data: token.interface.encodeFunctionData('increaseAllowance', [this.admin.address, 15]),
+      });
+      
+      await forwarder.execute(requestAllowance, signatureAllowance).then(tx => tx.wait());
+
+      const { request, signature } = await signMetaTxRequest(operatorAddr.provider, forwarder, {
+        from: operatorAddr.address,
+        to:  this.admin.address,
+        data: this.admin.interface.encodeFunctionData('retire', [0, 15]),
+      });
+      
+      await forwarder.execute(request, signature).then(tx => tx.wait());
+
       const remainingBalance = await this.token.balanceOf(operatorAddr.address)
       expect(remainingBalance).to.be.equal(0)
 
