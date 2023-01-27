@@ -1,18 +1,24 @@
 // contracts/CarbonPathToken.sol
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 
 /**
  * @title CarbonPath Token
  */
-contract CarbonPathToken is AccessControl, ERC20 {
+contract CarbonPathToken is ERC2771Context, AccessControl, ERC20 {
   bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-  constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {
+  constructor(
+    string memory _name,
+    string memory _symbol,
+    MinimalForwarder forwarder
+  ) ERC20(_name, _symbol) ERC2771Context(address(forwarder)) {
     // Setup initial permission for contract deployer
     _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _grantRole(MINTER_ROLE, _msgSender());
@@ -81,5 +87,26 @@ contract CarbonPathToken is AccessControl, ERC20 {
     require(hasRole(MINTER_ROLE, _msgSender()), "CarbonPathToken: must have minter role to burn");
     _spendAllowance(account, _msgSender(), amount);
     _burn(account, amount);
+  }
+
+  /* overrides, taken from ERC2771Context*/
+  function _msgSender()
+    internal
+    view
+    virtual
+    override(ERC2771Context, Context)
+    returns (address sender)
+  {
+    return super._msgSender();
+  }
+
+  function _msgData()
+    internal
+    view
+    virtual
+    override(ERC2771Context, Context)
+    returns (bytes calldata)
+  {
+    return super._msgData();
   }
 }

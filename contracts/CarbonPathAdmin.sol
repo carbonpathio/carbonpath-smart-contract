@@ -1,6 +1,9 @@
 // contracts/CarbonpathAdmin.sol
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.17;
+pragma solidity 0.8.16;
+
+import "./CarbonPathNFT.sol";
+import "./CarbonPathToken.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -8,13 +11,13 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./CarbonPathNFT.sol";
-import "./CarbonPathToken.sol";
+import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
+import "@openzeppelin/contracts/metatx/MinimalForwarder.sol";
 
 /**
  * @title Carbon Path Admin
  */
-contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
+contract CarbonPathAdmin is ERC2771Context, Ownable, AccessControl, ReentrancyGuard {
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
   using SafeERC20 for CarbonPathToken;
@@ -36,11 +39,14 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
 
   bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
+  event RetireToken(uint256 tokenId, uint256 amount, address user);
+
   constructor(
     address _nftContractAddress,
     address _tokenContractAddress,
-    address _stableTokenAddress
-  ) {
+    address _stableTokenAddress,
+    MinimalForwarder forwarder
+  ) ERC2771Context(address(forwarder)) {
     require(_nftContractAddress != address(0), "CarbonPathAdmin: zero address for nft");
     require(_tokenContractAddress != address(0), "CarbonPathAdmin: zero address for token");
     require(_stableTokenAddress != address(0), "CarbonPathAdmin: zero address for stable token");
@@ -239,6 +245,8 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
 
     //Burn the tokens
     carbonPathToken.burnFrom(_msgSender(), amount);
+
+    emit RetireToken(tokenId, amount, _msgSender());
   }
 
   /**
@@ -296,5 +304,26 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
 
     stableToken.safeTransferFrom(_msgSender(), sellerAddress, requiredAmount);
     carbonPathToken.safeTransfer(_msgSender(), cpAmount);
+  }
+
+  /* overrides, taken from ERC2771Context*/
+  function _msgSender()
+    internal
+    view
+    virtual
+    override(ERC2771Context, Context)
+    returns (address sender)
+  {
+    return super._msgSender();
+  }
+
+  function _msgData()
+    internal
+    view
+    virtual
+    override(ERC2771Context, Context)
+    returns (bytes calldata)
+  {
+    return super._msgData();
   }
 }

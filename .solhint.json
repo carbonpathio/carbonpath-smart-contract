@@ -6,6 +6,6 @@
     "avoid-sha3": "warn",
     "reason-string": "off",
     "func-visibility": ["warn",{"ignoreConstructors":true}],
-    "compiler-version": ["error","^0.8.17"]
+    "compiler-version": ["error","^0.8.16"]
   }
 }
