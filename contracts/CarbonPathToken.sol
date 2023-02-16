@@ -24,9 +24,9 @@ contract CarbonPathToken is AccessControl, ERC20 {
    * Requirements:
    * - the caller must have the `DEFAULT_ADMIN_ROLE`.
    */
-  function grantMinter(address account) public {
+  function grantMinter(address _address) public {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CarbonPathToken: must be an admin");
-    _grantRole(MINTER_ROLE, account);
+    _grantRole(MINTER_ROLE, _address);
   }
 
   /**
@@ -35,9 +35,9 @@ contract CarbonPathToken is AccessControl, ERC20 {
    * Requirements:
    * - the caller must have the `DEFAULT_ADMIN_ROLE`.
    */
-  function revokeMinter(address account) public {
+  function revokeMinter(address _address) public {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CarbonPathToken: must be an admin");
-    _revokeRole(MINTER_ROLE, account);
+    _revokeRole(MINTER_ROLE, _address);
   }
 
   /**
@@ -46,9 +46,9 @@ contract CarbonPathToken is AccessControl, ERC20 {
    * Requirements:
    * - the caller must have the `MINTER_ROLE`.
    */
-  function mint(address account, uint256 amount) public {
+  function mint(address _address, uint256 amount) public {
     require(hasRole(MINTER_ROLE, _msgSender()), "CarbonPathToken: must have minter role to mint");
-    _mint(account, amount);
+    _mint(_address, amount);
   }
 
   /**
@@ -66,20 +66,20 @@ contract CarbonPathToken is AccessControl, ERC20 {
   }
 
   /**
-   * @dev Destroys `amount` tokens from `account`, deducting from the caller's
+   * @dev Destroys `amount` tokens from `_address`, deducting from the caller's
    * allowance.
    *
    * See {ERC20-_burn} and {ERC20-allowance}.
    *
    * Requirements:
    *
-   * - the caller must have allowance for ``accounts``'s tokens of at least
+   * - the caller must have allowance for ``_address``'s tokens of at least
    * `amount`.
    * - the caller must have `MINTER_ROLE`
    */
-  function burnFrom(address account, uint256 amount) public virtual {
+  function burnFrom(address _address, uint256 amount) public virtual {
     require(hasRole(MINTER_ROLE, _msgSender()), "CarbonPathToken: must have minter role to burn");
-    _spendAllowance(account, _msgSender(), amount);
-    _burn(account, amount);
+    _spendAllowance(_address, _msgSender(), amount);
+    _burn(_address, amount);
   }
 }

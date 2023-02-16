@@ -28,11 +28,9 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
   address public nonProfitAddress;
   address public sellerAddress;
 
-  mapping(address => uint256) private sellerTokensAmount; // Keep track of the current amount a wallet is selling
-
   uint256 public constant BASE_PERCENTAGE = 1000; // 100%, to support 1 decimal place
   uint256 public constant NON_PROFIT_PERCENTAGE = 50; // 5%
-  uint256 public constant EXCHANGE_RATE = 30;
+  uint256 public constant EXCHANGE_RATE = 30; // 1 CPCO2 Token : 30 cUSD
 
   bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -80,9 +78,9 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
    * Requirements:
    * - the caller must have the `DEFAULT_ADMIN_ROLE`.
    */
-  function grantMinter(address account) public {
+  function grantMinter(address _address) public {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CarbonPathAdmin: must be an admin");
-    _grantRole(MINTER_ROLE, account);
+    _grantRole(MINTER_ROLE, _address);
   }
 
   /**
@@ -91,9 +89,9 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
    * Requirements:
    * - the caller must have the `DEFAULT_ADMIN_ROLE`.
    */
-  function revokeMinter(address account) public {
+  function revokeMinter(address _address) public {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CarbonPathAdmin: must be an admin");
-    _revokeRole(MINTER_ROLE, account);
+    _revokeRole(MINTER_ROLE, _address);
   }
 
   /**
@@ -141,24 +139,20 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
   function setSellerAddress(address _address) public nonReentrant {
     require(hasRole(DEFAULT_ADMIN_ROLE, _msgSender()), "CarbonPathAdmin: must have admin role");
     require(_address != address(0), "CarbonPathAdmin: zero address");
-    uint256 oldSellerAmount = sellerTokensAmount[sellerAddress];
     uint256 balance = carbonPathToken.balanceOf(address(this));
 
-    if (balance > 0 && oldSellerAmount > 0) {
-      if (balance < oldSellerAmount) {
-        carbonPathToken.safeTransfer(sellerAddress, balance);
-      } else {
-        carbonPathToken.safeTransfer(sellerAddress, oldSellerAmount);
-      }
+    if (balance > 0) {
+      carbonPathToken.safeTransfer(sellerAddress, balance);
     }
-    sellerTokensAmount[sellerAddress] = 0;
-    sellerTokensAmount[_address] = 0;
+
     sellerAddress = _address;
   }
 
   /**
-   * @dev Creates a new token for `to`.
-   * Additionally sets URI for the token.
+   * @dev Creates a new NFT for `to`.
+   * Additionally sets URI/metadata and geoJSON for the NFT.
+   * This also handles airdropping of tokens to
+   * set receipients
    *
    * Requirements:
    * - the caller must have the `MINTER_ROLE`.
@@ -174,8 +168,10 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
     string memory geoJson
   ) public virtual nonReentrant {
     require(hasRole(MINTER_ROLE, _msgSender()), "CarbonPathAdmin: must have minter role to mint");
-    require(cpFeePercentage <= BASE_PERCENTAGE, "CarbonPathAdmin: Percentage must not exceed 100%");
+    require(to != address(0), "CarbonPathAdmin: zero address for NFT receiver");
     require(operatorAddress != address(0), "CarbonPathAdmin: zero address for operator");
+    require(cpFeePercentage <= BASE_PERCENTAGE, "CarbonPathAdmin: Percentage must not exceed 100%");
+
     carbonPathNFT.mint(to, advanceAmount, bufferAmount, tokenUri, metadata, geoJson);
 
     uint256 cpFee = _calculateCPFee(advanceAmount, cpFeePercentage);
@@ -199,7 +195,7 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
    * Requirements:
    * - the caller must have the `MINTER_ROLE`.
    */
-  function updateTokenURI(uint256 tokenId, string memory tokenUri) public virtual nonReentrant {
+  function updateTokenURI(uint256 tokenId, string memory tokenUri) public virtual {
     require(
       hasRole(MINTER_ROLE, _msgSender()),
       "CarbonPathAdmin: must have minter role to update URI"
@@ -214,7 +210,7 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
    * Requirements:
    * - the caller must have the `MINTER_ROLE`.
    */
-  function updateMetadata(uint256 tokenId, string calldata metadata) public virtual nonReentrant {
+  function updateMetadata(uint256 tokenId, string calldata metadata) public virtual {
     require(
       hasRole(MINTER_ROLE, _msgSender()),
       "CarbonPathAdmin: must have minter role to update Metadata"
@@ -224,7 +220,7 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
   }
 
   /**
-   * @dev Retire the carbon token for a well
+   * @dev Retire the CPCO2 token for a well
    *
    */
   function retire(uint256 tokenId, uint256 amount) public virtual nonReentrant {
@@ -242,7 +238,11 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
   }
 
   /**
-   * @dev Transfer CarbonPathToken for Selling
+   * @dev Transfer CPCO2 Tokens for Selling
+   *
+   * Since only CarbonPath Wallets are allowed as sellers
+   * All CPCO2 Tokens tranferred in the contract are considered
+   * sellable.
    *
    * Requirements:
    * - the caller must be the seller address.
@@ -254,12 +254,11 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
       "CarbonPathAdmin: not enough balance"
     );
 
-    sellerTokensAmount[sellerAddress] += amount;
     carbonPathToken.safeTransferFrom(_msgSender(), address(this), amount);
   }
 
   /**
-   * @dev Withdraw stored CarbonPathTokens
+   * @dev Withdraw stored CPCO2 Tokens and remove them as sellable
    *
    * Requirements:
    * - the caller must be the seller address.
@@ -271,12 +270,12 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
       "CarbonPathAdmin: not enough balance"
     );
 
-    sellerTokensAmount[sellerAddress] -= amount;
     carbonPathToken.safeTransfer(_msgSender(), amount);
   }
 
   /**
-   * @dev Buy coins for selling
+   * @dev Buy CPCO2 Tokens from the contract
+   * This automatically transfer cUSD to the seller address
    *
    */
   function buy(uint256 cpAmount) public virtual nonReentrant {
@@ -291,8 +290,6 @@ contract CarbonPathAdmin is Ownable, AccessControl, ReentrancyGuard {
       stableToken.balanceOf(_msgSender()) >= requiredAmount,
       "CarbonPathAdmin: not enough stable token"
     );
-
-    sellerTokensAmount[sellerAddress] -= cpAmount;
 
     stableToken.safeTransferFrom(_msgSender(), sellerAddress, requiredAmount);
     carbonPathToken.safeTransfer(_msgSender(), cpAmount);

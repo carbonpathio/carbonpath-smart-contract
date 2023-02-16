@@ -25,7 +25,7 @@ jobs:
           yarn install --prefer-offline --non-interactive
           yarn lint
           yarn compile
-          yarn test
+          yarn coverage
         env:
           MNEMONIC_CELO: sample
           CP_FEE_ADDRESS: '0xfCd83873A6D58921f39E8dA3de98E21B5235B66B'

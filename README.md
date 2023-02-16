@@ -23,6 +23,12 @@ yarn compile
 yarn test
 ```
 
+## Running Coverage
+
+```bash
+yarn coverage
+```
+
 ## Deploying Contracts
 
 
