@@ -14,6 +14,14 @@ describe('CarbonPathNFT', function () {
     await this.nft.deployed()
   })
 
+  describe("Deployment", function() {
+    it('revert if no admin address is given', async function () {
+      const [owner] = await ethers.getSigners()
+      await expect(this.NFT.deploy("0x0000000000000000000000000000000000000000")).to.be.revertedWith("CarbonPathNFT: zero address for admin")
+
+    })
+  })
+
   describe('Admin Address', function () {
     it('getAdminAddress returns the admin address set on deploy', async function () {
       const [owner] = await ethers.getSigners()
@@ -77,6 +85,12 @@ describe('CarbonPathNFT', function () {
       const tokenURI = await this.nft.tokenURI(0)
       expect(tokenURI).to.equal('http://localhost/token/0/')
 
+      const geoJSON = await this.nft.getGeoJson(0)
+      expect(geoJSON).to.equal( JSON.stringify(GEOJSON1))
+
+      const tokenMetadata = await this.nft.getMetadata(0)
+      expect(tokenMetadata).to.equal(JSON.stringify(metadata))
+
       const advancedAmount = await this.nft.getAdvancedEAVs(0)
       expect(advancedAmount).to.equal(20)
 
@@ -84,7 +98,7 @@ describe('CarbonPathNFT', function () {
       expect(bufferAmount).to.equal(10)
     })
   })
-
+  
   describe('Update Retired EAVs', function () {
     beforeEach(async function () {
       const [owner] = await ethers.getSigners()
@@ -143,6 +157,10 @@ describe('CarbonPathNFT', function () {
       await expect(this.nft.connect(addr1).setTokenURI(0, 'test')).to.be.revertedWith(
         'CarbonPathNFT: must be an admin or an owner'
       )
+    })
+
+    it('token uri is required', async function () {
+      await expect(this.nft.setTokenURI(0, '')).to.be.revertedWith('CarbonPathNFT: uri should be set')
     })
 
     it('cannot update if the token is not yet minted', async function () {

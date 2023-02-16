@@ -107,10 +107,10 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
    * Requirements:
    * - the caller must be the owner.
    */
-  function setAdminAddress(address adminAddress) public onlyOwner {
-    require(adminAddress != address(0), "CarbonPathNFT: zero address for admin");
+  function setAdminAddress(address _address) public onlyOwner {
+    require(_address != address(0), "CarbonPathNFT: zero address for admin");
 
-    _adminAddress = adminAddress;
+    _adminAddress = _address;
   }
 
   /**
@@ -137,8 +137,9 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
   }
 
   /**
-   * @dev Creates a new token for `to`.
-   * Additionally sets URI and metadata for the token
+   * @dev Creates a new NFT for `to`.
+   * Additionally sets URI, metadata, geoJSON for the token
+   * Stores the number of advanced and buffer pool EAVs
    *
    * Requirements:
    * - Only the admin address can mint

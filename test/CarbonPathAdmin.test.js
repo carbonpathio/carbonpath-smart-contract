@@ -1,8 +1,10 @@
 // test/CarbonPathNFT.test.js
 const { expect } = require('chai')
-const BigNumber = require('bignumber.js')
 const metadata = require('./data/mockData.json')
 const GEOJSON1 = require('./data/GEOJSON1.json')
+const keccak256 = require('keccak256')
+
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 describe('CarbonPathAdmin', function () {
   before(async function () {
@@ -10,6 +12,37 @@ describe('CarbonPathAdmin', function () {
     this.Token = await ethers.getContractFactory('CarbonPathToken')
     this.Admin = await ethers.getContractFactory('CarbonPathAdmin')
     this.NFT = await ethers.getContractFactory('CarbonPathNFT')
+  })
+
+  describe("Deployment", function() {
+    it('revert if no address is given', async function () {
+    const [owner] = await ethers.getSigners()
+
+    this.stableToken = await this.StableToken.deploy()
+
+    this.token = await this.Token.deploy('test', '$TEST')
+
+    this.nft = await this.NFT.deploy(owner.address)
+    await this.nft.deployed()
+
+    await expect(this.Admin.deploy(
+      ZERO_ADDRESS,
+      this.token.address,
+      this.stableToken.address
+    )).to.be.revertedWith("CarbonPathAdmin: zero address for nft")
+
+    await expect(this.Admin.deploy(
+      this.nft.address,
+      ZERO_ADDRESS,
+      this.stableToken.address
+    )).to.be.revertedWith("CarbonPathAdmin: zero address for token")
+
+    await expect(this.Admin.deploy(
+      this.nft.address,
+      this.token.address,
+      ZERO_ADDRESS,
+    )).to.be.revertedWith("CarbonPathAdmin: zero address for stable token")
+    })
   })
 
   beforeEach(async function () {
@@ -33,6 +66,58 @@ describe('CarbonPathAdmin', function () {
     await this.token.grantMinter(this.admin.address)
   })
 
+  describe('Grant Roles', function() {
+    it('only admin can grant minter role', async function() {
+      const [owner, addr1] = await ethers.getSigners()
+      
+      await expect(this.admin.connect(addr1).grantMinter(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must be an admin")
+      await this.admin.connect(owner).grantMinter(addr1.address)
+
+      expect(await this.admin.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.true
+    })
+
+    it('only admin can revoke minter role', async function() {
+      const [owner, addr1] = await ethers.getSigners()
+      await this.admin.connect(owner).grantMinter(addr1.address)
+      
+      expect(await this.admin.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.true
+      await expect(this.admin.connect(addr1).revokeMinter(owner.address)).to.be.revertedWith("CarbonPathAdmin: must be an admin")
+      
+      await this.admin.connect(owner).revokeMinter(addr1.address)
+      expect(await this.admin.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.false
+    })
+  })
+
+  describe('Set Addresses', function() {
+    it('only admin can set addresses', async function() {
+      const [owner, addr1, addr2] = await ethers.getSigners()
+      
+      await expect(this.admin.connect(addr1).setCpFeeAddress(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must have admin role")
+      await expect(this.admin.connect(addr1).setNonProfitAddress(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must have admin role")
+      await expect(this.admin.connect(addr1).setBufferPoolAddress(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must have admin role")
+
+      await this.admin.setCpFeeAddress(addr2.address)
+      expect(await this.admin.cpFeeAddress()).to.be.equal(addr2.address)
+
+      await this.admin.setNonProfitAddress(addr2.address)
+      expect(await this.admin.nonProfitAddress()).to.be.equal(addr2.address)
+
+      await this.admin.setBufferPoolAddress(addr2.address)
+      expect(await this.admin.bufferPoolAddress()).to.be.equal(addr2.address)
+      
+    })
+
+    it('should not be a zero address', async function() {
+      const [owner, addr1, addr2] = await ethers.getSigners()
+      
+      await expect(this.admin.setCpFeeAddress(ZERO_ADDRESS)).to.be.revertedWith("CarbonPathAdmin: zero address")
+      await expect(this.admin.setNonProfitAddress(ZERO_ADDRESS)).to.be.revertedWith("CarbonPathAdmin: zero address")
+      await expect(this.admin.setBufferPoolAddress(ZERO_ADDRESS)).to.be.revertedWith("CarbonPathAdmin: zero address")
+      
+    })
+  })
+
+
   describe('Mint NFT', function () {
     beforeEach(async function () {
       const [owner, cpFeeAddr, bufferAddr, nonProfitAddr] = await ethers.getSigners()
@@ -42,8 +127,22 @@ describe('CarbonPathAdmin', function () {
       await this.admin.setBufferPoolAddress(bufferAddr.address)
     })
 
-    it('token uri is required', async function () {
+    
+    it('handle required fields', async function () {
       const [owner, addr1] = await ethers.getSigners()
+      await expect(
+        this.admin.mint(
+          ZERO_ADDRESS,
+          10,
+          250,
+          10,
+          addr1.address,
+          'http://localhost/token/0/',
+          JSON.stringify(metadata),
+          JSON.stringify(GEOJSON1)
+        )
+      ).to.be.revertedWith("CarbonPathAdmin: zero address for NFT receiver")
+
       await expect(
         this.admin.mint(
           owner.address,
@@ -56,6 +155,49 @@ describe('CarbonPathAdmin', function () {
           JSON.stringify(GEOJSON1)
         )
       ).to.be.revertedWith('CarbonPathNFT: uri should be set')
+
+      await expect(
+        this.admin.mint(
+          owner.address,
+          10,
+          250,
+          10,
+          ZERO_ADDRESS,
+          'http://localhost/token/0/',
+          JSON.stringify(metadata),
+          JSON.stringify(GEOJSON1)
+        )
+      ).to.be.revertedWith('CarbonPathAdmin: zero address for operator')
+
+      await expect(
+        this.admin.mint(
+          owner.address,
+          10,
+          1001,
+          10,
+          addr1.address,
+          'http://localhost/token/0/',
+          JSON.stringify(metadata),
+          JSON.stringify(GEOJSON1)
+        )
+      ).to.be.revertedWith('CarbonPathAdmin: Percentage must not exceed 100%')
+    })
+
+    it('only minters can mint', async function () {
+      const [owner, addr1] = await ethers.getSigners()
+
+      await expect(
+        this.admin.connect(addr1).mint(
+          owner.address,
+          10,
+          250,
+          10,
+          ZERO_ADDRESS,
+          'http://localhost/token/0/',
+          JSON.stringify(metadata),
+          JSON.stringify(GEOJSON1)
+        )
+      ).to.be.revertedWith('CarbonPathAdmin: must have minter role to mint')
     })
 
     it('successfully mint a token', async function () {
@@ -276,6 +418,21 @@ describe('CarbonPathAdmin', function () {
       const [owner, sellerAddr] = await ethers.getSigners()
 
       await this.admin.setSellerAddress(sellerAddr.address)
+    })
+
+    it('only admin can set seller address', async function () {
+      const [owner, sellerAddr, buyerAddr] = await ethers.getSigners()
+      await expect(this.admin.connect(buyerAddr).setSellerAddress(buyerAddr.address)).to.be.revertedWith(
+        'CarbonPathAdmin: must have admin role'
+      )
+
+      await this.admin.setSellerAddress(sellerAddr.address)
+      expect(await this.admin.sellerAddress()).to.be.equal(sellerAddr.address)
+    })
+
+    it('seller cannot be a zero address', async function () {
+      const [owner] = await ethers.getSigners()
+      await expect(this.admin.setSellerAddress(ZERO_ADDRESS)).to.be.revertedWith('CarbonPathAdmin: zero address')
     })
 
     it('only seller address can sell tokens', async function () {
