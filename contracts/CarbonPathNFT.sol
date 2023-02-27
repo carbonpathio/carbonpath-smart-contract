@@ -6,144 +6,93 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-/**
- * @title Carbon Path NFT
- */
-contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
-  using SafeMath for uint256;
+/// @title CarbonPathNFT
+/// @author Bld.ai
+/** @notice  - ERC721 token that bounds to a well. Contains the
+geolocation of a well and additional metadata.
+*/
+/// @dev Based on the ERC721 contract of OpenZeppelin
+contract CarbonPathNFT is Ownable, ERC721URIStorage {
   using Counters for Counters.Counter;
+  Counters.Counter private _tokenIdCounter;
 
-  // Contract address of the Admin contract that can access this token
-  address private _adminAddress;
-
+  /// @notice data structure to kept track of the tokens for each well
   struct EAVTokens {
     uint256 advanceEAVs;
     uint256 bufferPoolEAVs;
     uint256 retiredEAVs;
   }
 
-  Counters.Counter private _tokenIdCounter;
+  /// @notice Contract address of the Admin contract that have access to this NFT
+  address private _adminAddress;
 
-  mapping(uint256 => string) private geoJson; // mapping of tokenId to geoJson
-  mapping(uint256 => string) private metadata; // mapping of tokenId to metadata
-  mapping(uint256 => EAVTokens) private eavTokens; // mapping of tokenId to number of EAVTokens
+  /// @notice Mapping of the geoJson for each token
+  mapping(uint256 => string) private geoJson;
 
-  constructor(address adminAddress) ERC721("Carbon Path NFT", "CPNFT") {
-    require(adminAddress != address(0), "CarbonPathNFT: zero address for admin");
+  /// @notice Mapping of the metadata for each token
+  mapping(uint256 => string) private metadata;
+
+  /// @notice Mapping of the EAVToken data for each token
+  mapping(uint256 => EAVTokens) private eavTokens;
+
+  /// @notice emits when admin address is updated
+  event UpdateAdminAddress(address adminAddress);
+
+  /// @notice Deploys the smart contract and sets the admin address
+  constructor(address adminAddress) ERC721("CarbonPath NFT", "CPNFT") nonZeroAddress(adminAddress) {
     _adminAddress = adminAddress;
+
+    emit UpdateAdminAddress(adminAddress);
   }
 
-  /**
-   * @dev Require that the call came from the admin address.
-   */
+  /// @notice Require that the call came from an admin address.
+  /// @dev admin can mint and update nfts
   modifier onlyAdmin() {
-    require(_msgSender() == _adminAddress, "CarbonPathNFT: caller is not the admin");
+    require(_msgSender() == _adminAddress, "NFT: caller is not the admin");
     _;
   }
 
-  /**
-   * @dev Returns whether `address` is allowed to manage `tokenId`.
-   *
-   * Requirements:
-   * - `tokenId` must exist.
-   */
-  function _isAdminOrOwner(address spender, uint256 tokenId) internal view returns (bool) {
-    return (_isApprovedOrOwner(spender, tokenId) || spender == _adminAddress);
+  /// @notice Require the address to be non-zero
+  modifier nonZeroAddress(address _address) {
+    require(_address != address(0), "NFT: zero address");
+    _;
   }
 
-  /**
-   * @dev Returns the market address set via {setAdminAddress}.
-   *
-   */
-  function getAdminAddress() public view returns (address adminAddress) {
-    return _adminAddress;
-  }
-
-  /**
-   * @dev Returns the number of advance EAVs in the tokenId
-   *
-   */
-  function getAdvancedEAVs(uint256 tokenId) public view returns (uint256) {
-    return eavTokens[tokenId].advanceEAVs;
-  }
-
-  /**
-   * @dev Returns the number of buffer pool EAVs in the tokenId
-   *
-   */
-  function getBufferPoolEAVs(uint256 tokenId) public view returns (uint256) {
-    return eavTokens[tokenId].bufferPoolEAVs;
-  }
-
-  /**
-   * @dev Returns the number of retired EAVs in the tokenId
-   *
-   */
-  function getRetiredEAVs(uint256 tokenId) public view returns (uint256) {
-    return eavTokens[tokenId].retiredEAVs;
-  }
-
-  /**
-   * @dev Returns the geoJSON stored in the tokenId
-   *
-   */
-  function getGeoJson(uint256 tokenId) public view returns (string memory) {
-    return geoJson[tokenId];
-  }
-
-  /**
-   * @dev Returns the metadata stored in the tokenId
-   *
-   */
-  function getMetadata(uint256 tokenId) public view returns (string memory) {
-    return metadata[tokenId];
-  }
-
-  /**
-   * @dev Set a new admin address.
-   *
-   * Requirements:
-   * - the caller must be the owner.
-   */
-  function setAdminAddress(address _address) public onlyOwner {
-    require(_address != address(0), "CarbonPathNFT: zero address for admin");
-
+  /// @notice Set a new admin address.
+  /// @dev can only be called by the owner, emits "UpdateAdminAddress" event
+  /// @param _address The address that will be the new admin
+  function setAdminAddress(address _address) external nonZeroAddress(_address) onlyOwner {
     _adminAddress = _address;
+    emit UpdateAdminAddress(_address);
   }
 
-  /**
-   * @dev Set the metadata for a tokenId.
-   *
-   * Requirements:
-   * - the caller must be the owner or an admin
-   */
-  function setMetadata(uint256 tokenId, string calldata _metadata) external {
-    require(_isAdminOrOwner(_msgSender(), tokenId), "CarbonPathNFT: must be an admin or an owner");
+  /// @notice Set the metadata for a tokenId
+  /// @dev can only be called by the admin
+  function setMetadata(uint256 tokenId, string calldata _metadata) external onlyAdmin {
+    require(tokenId < _tokenIdCounter.current(), "NFT: must be minted");
     metadata[tokenId] = _metadata;
   }
 
-  /**
-   * @dev Set the tokenURI for a tokenId.
-   *
-   * Requirements:
-   * - the caller must be the owner.
-   */
-  function setTokenURI(uint256 tokenId, string calldata tokenUri) external {
-    require(_isAdminOrOwner(_msgSender(), tokenId), "CarbonPathNFT: must be an admin or an owner");
-    require(bytes(tokenUri).length > 0, "CarbonPathNFT: uri should be set");
+  /// @notice Set the tokenURI for a tokenId
+  /// @dev can only be called by the admin
+  function setTokenURI(uint256 tokenId, string calldata tokenUri) external onlyAdmin {
+    require(bytes(tokenUri).length > 0, "NFT: uri should be set");
     super._setTokenURI(tokenId, tokenUri);
   }
 
   /**
-   * @dev Creates a new NFT for `to`.
+   * @notice Creates a new NFT for `to`.
    * Additionally sets URI, metadata, geoJSON for the token
    * Stores the number of advanced and buffer pool EAVs
-   *
-   * Requirements:
-   * - Only the admin address can mint
    */
+  /// @dev Can only be called by the admin
+  /// @param to address which will receive the NFT
+  /// @param advanceAmount number of advanced CPCO2 tokens for the token
+  /// @param advanceAmount number of buffer pool CPCO2 tokens for the token
+  /// @param tokenUri ipfs link for well documents
+  /// @param _metadata contains well information
+  /// @param _geoJson a geojson format for the permanence polygon of the well
   function mint(
     address to,
     uint256 advanceAmount,
@@ -151,8 +100,8 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
     string memory tokenUri,
     string memory _metadata,
     string memory _geoJson
-  ) public virtual nonReentrant onlyAdmin {
-    require(bytes(tokenUri).length > 0, "CarbonPathNFT: uri should be set");
+  ) external onlyAdmin {
+    require(bytes(tokenUri).length > 0, "NFT: uri should be set");
     uint256 tokenId = _tokenIdCounter.current();
     EAVTokens storage eavs = eavTokens[tokenId];
 
@@ -169,21 +118,60 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage, ReentrancyGuard {
     super._setTokenURI(tokenId, tokenUri);
   }
 
-  /**
-   * @dev update the number of RetiredEAVs
-   *
-   * Requirements:
-   * - Only the admin address can update
-   */
-  function updateRetiredEAVs(uint256 tokenId, uint256 retiredAmount) public virtual onlyAdmin {
+  /// @notice Updates the number of retired EAVS
+  /// @dev total retired EAVs must not exceed Advanced + Buffer Pool EAVs
+  /// @param tokenId tokenId of the well
+  /// @param retiredAmount amount of CPCO2 tokens to be retired
+  function updateRetiredEAVs(uint256 tokenId, uint256 retiredAmount) external onlyAdmin {
     EAVTokens storage eavs = eavTokens[tokenId];
     uint256 totalRetired = eavs.retiredEAVs + retiredAmount;
 
     require(
       eavs.advanceEAVs + eavs.bufferPoolEAVs >= totalRetired,
-      "CarbonPathNFT: retired amount will exceed minted amount"
+      "NFT: exceed max retired amount"
     );
 
     eavs.retiredEAVs = totalRetired;
+  }
+
+  /// @notice Returns the admin address set via {setAdminAddress}.
+  /// @return adminAddress address of the admin
+  function getAdminAddress() external view returns (address adminAddress) {
+    return _adminAddress;
+  }
+
+  /// @notice Returns the number of advance EAVs in the tokenId.
+  /// @param tokenId tokenId of the well
+  /// @return advancedEAVsAmount amount of advanced EAVS for the tokenID
+  function getAdvancedEAVs(uint256 tokenId) external view returns (uint256) {
+    return eavTokens[tokenId].advanceEAVs;
+  }
+
+  /// @notice Returns the number of buffer pool EAVs in the tokenId.
+  /// @param tokenId tokenId of the well
+  /// @return bufferPoolEAVsAmount amount of buffer pool EAVS for the tokenID
+  function getBufferPoolEAVs(uint256 tokenId) external view returns (uint256) {
+    return eavTokens[tokenId].bufferPoolEAVs;
+  }
+
+  /// @notice Returns the number of retired EAVs in the tokenId.
+  /// @param tokenId tokenId of the well
+  /// @return retiredEAVsAmount amount of retired EAVS for the tokenID
+  function getRetiredEAVs(uint256 tokenId) external view returns (uint256) {
+    return eavTokens[tokenId].retiredEAVs;
+  }
+
+  /// @notice Returns the geoJson stored in the tokenId
+  /// @param tokenId tokenId of the well
+  /// @return geoJson geoJSON for the tokenID
+  function getGeoJson(uint256 tokenId) external view returns (string memory) {
+    return geoJson[tokenId];
+  }
+
+  /// @notice Returns the metadata stored in the tokenId
+  /// @param tokenId tokenId of the well
+  /// @return metadata metadata for the tokenID
+  function getMetadata(uint256 tokenId) external view returns (string memory) {
+    return metadata[tokenId];
   }
 }

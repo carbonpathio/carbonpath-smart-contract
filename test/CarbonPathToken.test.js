@@ -2,6 +2,8 @@
 const { expect } = require('chai')
 const keccak256 = require('keccak256')
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
 describe('CarbonPathToken', () => {
   before(async function () {
     this.StableToken = await ethers.getContractFactory('CarbonPathToken')
@@ -12,10 +14,12 @@ describe('CarbonPathToken', () => {
   })
 
   describe('Grant Roles', function() {
+
+    
     it('only admin can grant minter role', async function() {
       const [owner, addr1] = await ethers.getSigners()
       
-      await expect(this.stableToken.connect(addr1).grantMinter(addr1.address)).to.be.revertedWith("CarbonPathToken: must be an admin")
+      await expect(this.stableToken.connect(addr1).grantMinter(addr1.address)).to.be.revertedWith("Token: must be an admin")
       
       await this.stableToken.connect(owner).grantMinter(addr1.address)
       expect(await this.stableToken.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.true
@@ -27,10 +31,17 @@ describe('CarbonPathToken', () => {
       await this.stableToken.connect(owner).grantMinter(addr1.address)
       expect(await this.stableToken.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.true
 
-      await expect(this.stableToken.connect(addr1).revokeMinter(owner.address)).to.be.revertedWith("CarbonPathToken: must be an admin")
+      await expect(this.stableToken.connect(addr1).revokeMinter(owner.address)).to.be.revertedWith("Token: must be an admin")
     
       await this.stableToken.connect(owner).revokeMinter(addr1.address)
       expect(await this.stableToken.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.false
+    })
+
+    it('should be a non zero address', async function() {
+      const [owner] = await ethers.getSigners()
+      
+      await expect(this.stableToken.grantMinter(ZERO_ADDRESS)).to.be.revertedWith("Token: zero address")
+      await expect(this.stableToken.revokeMinter(ZERO_ADDRESS)).to.be.revertedWith("Token: zero address")
     })
   })
 
@@ -38,7 +49,7 @@ describe('CarbonPathToken', () => {
     it('only minter can have mint tokens', async function () {
       const [owner, addr1] = await ethers.getSigners()
       await expect(this.stableToken.connect(addr1).mint(addr1.address, 100)).to.be.revertedWith(
-        'CarbonPathToken: must have minter role to mint'
+        'Token: must be a minter'
       )
     })
 
@@ -65,7 +76,7 @@ describe('CarbonPathToken', () => {
 
       await this.stableToken.revokeMinter(addr1.address)
       await expect(this.stableToken.connect(addr1).mint(addr1.address, 100)).to.be.revertedWith(
-        'CarbonPathToken: must have minter role to mint'
+        'Token: must be a minter'
       )
     })
   })
@@ -105,14 +116,14 @@ describe('CarbonPathToken', () => {
       const [owner, addr1] = await ethers.getSigners()
       this.stableToken.transfer(addr1.address, 50)
       await expect(this.stableToken.connect(addr1).burn(1)).to.be.revertedWith(
-        'CarbonPathToken: must have minter role to burn'
+        'Token: must be a minter'
       )
     }),
     it('only minter can burn other tokens', async function () {
       const [owner, addr1] = await ethers.getSigners()
       await this.stableToken.increaseAllowance(addr1.address, 1)
       await expect(this.stableToken.connect(addr1).burnFrom(owner.address,1)).to.be.revertedWith(
-        'CarbonPathToken: must have minter role to burn'
+        'Token: must be a minter'
       )
     })
 
