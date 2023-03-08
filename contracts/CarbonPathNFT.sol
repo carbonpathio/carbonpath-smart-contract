@@ -3,7 +3,6 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
@@ -39,13 +38,6 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
   /// @notice emits when admin address is updated
   event UpdateAdminAddress(address adminAddress);
 
-  /// @notice Deploys the smart contract and sets the admin address
-  constructor(address adminAddress) ERC721("CarbonPath NFT", "CPNFT") nonZeroAddress(adminAddress) {
-    _adminAddress = adminAddress;
-
-    emit UpdateAdminAddress(adminAddress);
-  }
-
   /// @notice Require that the call came from an admin address.
   /// @dev admin can mint and update nfts
   modifier onlyAdmin() {
@@ -57,6 +49,13 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
   modifier nonZeroAddress(address _address) {
     require(_address != address(0), "NFT: zero address");
     _;
+  }
+
+  /// @notice Deploys the smart contract and sets the admin address
+  constructor(address adminAddress) ERC721("CarbonPath NFT", "CPNFT") nonZeroAddress(adminAddress) {
+    _adminAddress = adminAddress;
+
+    emit UpdateAdminAddress(adminAddress);
   }
 
   /// @notice Set a new admin address.

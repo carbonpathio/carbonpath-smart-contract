@@ -19,11 +19,27 @@ contract CarbonPathAdmin is AccessControl {
   using SafeERC20 for IERC20;
   using SafeERC20 for CarbonPathToken;
 
+  /// @dev 1000 = 100%, this can support 1 decimal place
+  uint256 public constant BASE_PERCENTAGE = 1000;
+
+  /// @notice 5% is of buffer pool tokens goes to a nonProfitAddress
+  uint256 public constant NON_PROFIT_PERCENTAGE = 50; // 5%
+
+  /// @notice 1 CPCO2 Token  = 30 cUSD
+  uint256 public constant EXCHANGE_RATE = 30;
+
+  bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
+  /// @notice CarbonPathNFT contract that will hold the well NFTs
   CarbonPathNFT public immutable carbonPathNFT;
+
+  /// @notice CPCO2 tokens users can buy/retire
   CarbonPathToken public immutable carbonPathToken;
+
+  /// @notice StableToken (cUSD) used to buy CPCO2 tokens
   IERC20 public immutable stableToken;
 
-  /// @notice Address that will receive the a portion of the advanced CPCO2 tokens as fee
+  /// @notice Address that will receive a portion of the advanced CPCO2 tokens as fee
   address public cpFeeAddress;
 
   /// @notice Address that will receive the 95% of the buffer pool CPCO2 tokens
@@ -36,17 +52,6 @@ contract CarbonPathAdmin is AccessControl {
   /// @dev Only seller can call "sell" and "withdraw" functions
   address public sellerAddress;
 
-  /// @dev 1000 = 100%, this can support 1 decimal place
-  uint256 public constant BASE_PERCENTAGE = 1000;
-
-  /// @notice 5% is of buffer pool tokens goes to a nonProfitAddress
-  uint256 public constant NON_PROFIT_PERCENTAGE = 50; // 5%
-
-  /// @notice 1 CPCO2 Token  = 30 cUSD
-  uint256 public constant EXCHANGE_RATE = 30;
-
-  bytes32 private constant MINTER_ROLE = keccak256("MINTER_ROLE");
-
   /// @notice Require that the call came from an admin address.
   /// @dev admin can set addresses and grant roles
   modifier onlyAdmin() {
@@ -55,7 +60,7 @@ contract CarbonPathAdmin is AccessControl {
   }
 
   /// @notice Require that the call came from a minter address.
-  /// @dev minter can set mint wells and update it's tokenURI and metadata
+  /// @dev minter can set mint wells and update its tokenURI and metadata
   modifier onlyMinter() {
     require(hasRole(MINTER_ROLE, _msgSender()), "Admin: must be a minter");
     _;
@@ -135,7 +140,7 @@ contract CarbonPathAdmin is AccessControl {
 
   /// @notice Sets the receiver of the nonProfitFee
   /// @dev can only be called by the admin
-  /// @param _address The address that will be the receiver of the nonProfitFee
+  /// @param _address The address that will be the receiver of the non-profit fee
   function setNonProfitAddress(address _address) external onlyAdmin nonZeroAddress(_address) {
     nonProfitAddress = _address;
   }
@@ -174,7 +179,6 @@ contract CarbonPathAdmin is AccessControl {
    * operatorAddress will receive advanceAmount * (1 - cpFeePercentage)
    * bufferPoolAddress will receive bufferAmount * .95
    * nonProfitAddress will receive bufferAmount * .05
-   *
    *
    */
   /// @dev Can only be called by the minter
