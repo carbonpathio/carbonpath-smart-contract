@@ -17,7 +17,7 @@ describe('CarbonPathNFT', function () {
   describe("Deployment", function() {
     it('revert if no admin address is given', async function () {
       const [owner] = await ethers.getSigners()
-      await expect(this.NFT.deploy("0x0000000000000000000000000000000000000000")).to.be.revertedWith("CarbonPathNFT: zero address for admin")
+      await expect(this.NFT.deploy("0x0000000000000000000000000000000000000000")).to.be.revertedWith("NFT: zero address")
 
     })
   })
@@ -36,11 +36,18 @@ describe('CarbonPathNFT', function () {
       )
     })
 
+
     it('Admin address should not be the zero address', async function () {
       const [owner] = await ethers.getSigners()
       await expect(
         this.nft.setAdminAddress('0x0000000000000000000000000000000000000000')
-      ).to.be.revertedWith('CarbonPathNFT: zero address for admin')
+      ).to.be.revertedWith('NFT: zero address')
+    })
+
+    
+    it("sucessful setAdminAddress call", async function () {
+      const [owner, addr1] = await ethers.getSigners()
+      await expect(this.nft.setAdminAddress(addr1.address)).to.emit(this.nft, "UpdateAdminAddress").withArgs(addr1.address)
     })
   })
 
@@ -58,14 +65,14 @@ describe('CarbonPathNFT', function () {
             JSON.stringify(metadata),
             JSON.stringify(GEOJSON1)
           )
-      ).to.be.revertedWith('CarbonPathNFT: caller is not the admin')
+      ).to.be.revertedWith('NFT: caller is not the admin')
     })
 
     it('token uri is required', async function () {
       const [owner] = await ethers.getSigners()
       await expect(
         this.nft.mint(owner.address, 20, 20, '', JSON.stringify(metadata), JSON.stringify(GEOJSON1))
-      ).to.be.revertedWith('CarbonPathNFT: uri should be set')
+      ).to.be.revertedWith('NFT: uri should be set')
     })
 
     it('successfully mint a token', async function () {
@@ -115,13 +122,13 @@ describe('CarbonPathNFT', function () {
     it("can't be called by an address that's not an admin", async function () {
       const [owner, addr1] = await ethers.getSigners()
       await expect(this.nft.connect(addr1).updateRetiredEAVs(0, 1)).to.be.revertedWith(
-        'CarbonPathNFT: caller is not the admin'
+        'NFT: caller is not the admin'
       )
     })
 
     it('burn amount will exceed stored advance and buffer pool amount', async function () {
       await expect(this.nft.updateRetiredEAVs(0, 31)).to.be.revertedWith(
-        'CarbonPathNFT: retired amount will exceed minted amount'
+        'NFT: exceed max retired amount'
       )
     })
 
@@ -155,16 +162,16 @@ describe('CarbonPathNFT', function () {
     it("can't be called by an address that's not an admin", async function () {
       const [owner, addr1] = await ethers.getSigners()
       await expect(this.nft.connect(addr1).setTokenURI(0, 'test')).to.be.revertedWith(
-        'CarbonPathNFT: must be an admin or an owner'
+        'NFT: caller is not the admin'
       )
     })
 
     it('token uri is required', async function () {
-      await expect(this.nft.setTokenURI(0, '')).to.be.revertedWith('CarbonPathNFT: uri should be set')
+      await expect(this.nft.setTokenURI(0, '')).to.be.revertedWith('NFT: uri should be set')
     })
 
     it('cannot update if the token is not yet minted', async function () {
-      await expect(this.nft.setTokenURI(1, 'test')).to.be.revertedWith('ERC721: invalid token ID')
+      await expect(this.nft.setTokenURI(1, 'test')).to.be.revertedWith('ERC721URIStorage: URI set of nonexistent token')
     })
 
     it('successful change', async function () {
@@ -172,6 +179,38 @@ describe('CarbonPathNFT', function () {
 
       const tokenURI = await this.nft.tokenURI(0)
       expect(tokenURI).to.be.equal('test')
+    })
+  })
+
+  describe('Update Metadata', function () {
+    beforeEach(async function () {
+      const [owner] = await ethers.getSigners()
+      await this.nft.mint(
+        owner.address,
+        20,
+        10,
+        'http://localhost/token/0/',
+        JSON.stringify(metadata),
+        JSON.stringify(GEOJSON1)
+      )
+    })
+
+    it("can't be called by an address that's not an admin", async function () {
+      const [owner, addr1] = await ethers.getSigners()
+      await expect(this.nft.connect(addr1).setMetadata(0, 'test')).to.be.revertedWith(
+        'NFT: caller is not the admin'
+      )
+    })
+
+    it('cannot update if the token is not yet minted', async function () {
+      await expect(this.nft.setMetadata(1, 'test')).to.be.revertedWith('NFT: must be minted')
+    })
+
+    it('successful change', async function () {
+      await this.nft.setMetadata(0, 'test')
+
+      const metadata = await this.nft.getMetadata(0)
+      expect(metadata).to.be.equal('test')
     })
   })
 })

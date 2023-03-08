@@ -5,6 +5,10 @@ const GEOJSON1 = require('./data/GEOJSON1.json')
 const keccak256 = require('keccak256')
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+const CP_FEE_ADDRESS = "0x0000000000000000000000000000000000000001"
+const BUFFER_POOL_ADDRESS = "0x0000000000000000000000000000000000000002"
+const NON_PROFIT_ADDRESS = "0x0000000000000000000000000000000000000003"
+const SELLER_ADDRESS = "0x0000000000000000000000000000000000000004"
 
 describe('CarbonPathAdmin', function () {
   before(async function () {
@@ -28,20 +32,32 @@ describe('CarbonPathAdmin', function () {
     await expect(this.Admin.deploy(
       ZERO_ADDRESS,
       this.token.address,
-      this.stableToken.address
-    )).to.be.revertedWith("CarbonPathAdmin: zero address for nft")
+      this.stableToken.address,
+      CP_FEE_ADDRESS,
+      BUFFER_POOL_ADDRESS,
+      NON_PROFIT_ADDRESS,
+      SELLER_ADDRESS
+    )).to.be.revertedWith("Admin: zero address")
 
     await expect(this.Admin.deploy(
       this.nft.address,
       ZERO_ADDRESS,
-      this.stableToken.address
-    )).to.be.revertedWith("CarbonPathAdmin: zero address for token")
+      this.stableToken.address,
+      CP_FEE_ADDRESS,
+      BUFFER_POOL_ADDRESS,
+      NON_PROFIT_ADDRESS,
+      SELLER_ADDRESS
+    )).to.be.revertedWith("Admin: zero address")
 
     await expect(this.Admin.deploy(
       this.nft.address,
       this.token.address,
       ZERO_ADDRESS,
-    )).to.be.revertedWith("CarbonPathAdmin: zero address for stable token")
+      CP_FEE_ADDRESS,
+      BUFFER_POOL_ADDRESS,
+      NON_PROFIT_ADDRESS,
+      SELLER_ADDRESS
+    )).to.be.revertedWith("Admin: zero address")
     })
   })
 
@@ -58,7 +74,11 @@ describe('CarbonPathAdmin', function () {
     this.admin = await this.Admin.deploy(
       this.nft.address,
       this.token.address,
-      this.stableToken.address
+      this.stableToken.address,
+      CP_FEE_ADDRESS,
+      BUFFER_POOL_ADDRESS,
+      NON_PROFIT_ADDRESS,
+      SELLER_ADDRESS
     )
     await this.admin.deployed()
 
@@ -70,7 +90,7 @@ describe('CarbonPathAdmin', function () {
     it('only admin can grant minter role', async function() {
       const [owner, addr1] = await ethers.getSigners()
       
-      await expect(this.admin.connect(addr1).grantMinter(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must be an admin")
+      await expect(this.admin.connect(addr1).grantMinter(addr1.address)).to.be.revertedWith("Admin: must be an admin")
       await this.admin.connect(owner).grantMinter(addr1.address)
 
       expect(await this.admin.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.true
@@ -81,20 +101,28 @@ describe('CarbonPathAdmin', function () {
       await this.admin.connect(owner).grantMinter(addr1.address)
       
       expect(await this.admin.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.true
-      await expect(this.admin.connect(addr1).revokeMinter(owner.address)).to.be.revertedWith("CarbonPathAdmin: must be an admin")
+      await expect(this.admin.connect(addr1).revokeMinter(owner.address)).to.be.revertedWith("Admin: must be an admin")
       
       await this.admin.connect(owner).revokeMinter(addr1.address)
       expect(await this.admin.hasRole(keccak256('MINTER_ROLE'), addr1.address)).to.be.false
     })
+
+    it('should be a non zero address', async function() {
+      const [owner] = await ethers.getSigners()
+      
+      await expect(this.admin.grantMinter(ZERO_ADDRESS)).to.be.revertedWith("Admin: zero address")
+      await expect(this.admin.revokeMinter(ZERO_ADDRESS)).to.be.revertedWith("Admin: zero address")
+    })
+ 
   })
 
   describe('Set Addresses', function() {
     it('only admin can set addresses', async function() {
       const [owner, addr1, addr2] = await ethers.getSigners()
       
-      await expect(this.admin.connect(addr1).setCpFeeAddress(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must have admin role")
-      await expect(this.admin.connect(addr1).setNonProfitAddress(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must have admin role")
-      await expect(this.admin.connect(addr1).setBufferPoolAddress(addr1.address)).to.be.revertedWith("CarbonPathAdmin: must have admin role")
+      await expect(this.admin.connect(addr1).setCpFeeAddress(addr1.address)).to.be.revertedWith("Admin: must be an admin")
+      await expect(this.admin.connect(addr1).setNonProfitAddress(addr1.address)).to.be.revertedWith("Admin: must be an admin")
+      await expect(this.admin.connect(addr1).setBufferPoolAddress(addr1.address)).to.be.revertedWith("Admin: must be an admin")
 
       await this.admin.setCpFeeAddress(addr2.address)
       expect(await this.admin.cpFeeAddress()).to.be.equal(addr2.address)
@@ -110,9 +138,9 @@ describe('CarbonPathAdmin', function () {
     it('should not be a zero address', async function() {
       const [owner, addr1, addr2] = await ethers.getSigners()
       
-      await expect(this.admin.setCpFeeAddress(ZERO_ADDRESS)).to.be.revertedWith("CarbonPathAdmin: zero address")
-      await expect(this.admin.setNonProfitAddress(ZERO_ADDRESS)).to.be.revertedWith("CarbonPathAdmin: zero address")
-      await expect(this.admin.setBufferPoolAddress(ZERO_ADDRESS)).to.be.revertedWith("CarbonPathAdmin: zero address")
+      await expect(this.admin.setCpFeeAddress(ZERO_ADDRESS)).to.be.revertedWith("Admin: zero address")
+      await expect(this.admin.setNonProfitAddress(ZERO_ADDRESS)).to.be.revertedWith("Admin: zero address")
+      await expect(this.admin.setBufferPoolAddress(ZERO_ADDRESS)).to.be.revertedWith("Admin: zero address")
       
     })
   })
@@ -141,7 +169,7 @@ describe('CarbonPathAdmin', function () {
           JSON.stringify(metadata),
           JSON.stringify(GEOJSON1)
         )
-      ).to.be.revertedWith("CarbonPathAdmin: zero address for NFT receiver")
+      ).to.be.revertedWith("Admin: zero address")
 
       await expect(
         this.admin.mint(
@@ -154,7 +182,7 @@ describe('CarbonPathAdmin', function () {
           JSON.stringify(metadata),
           JSON.stringify(GEOJSON1)
         )
-      ).to.be.revertedWith('CarbonPathNFT: uri should be set')
+      ).to.be.revertedWith('NFT: uri should be set')
 
       await expect(
         this.admin.mint(
@@ -167,7 +195,7 @@ describe('CarbonPathAdmin', function () {
           JSON.stringify(metadata),
           JSON.stringify(GEOJSON1)
         )
-      ).to.be.revertedWith('CarbonPathAdmin: zero address for operator')
+      ).to.be.revertedWith('Admin: zero address')
 
       await expect(
         this.admin.mint(
@@ -180,7 +208,7 @@ describe('CarbonPathAdmin', function () {
           JSON.stringify(metadata),
           JSON.stringify(GEOJSON1)
         )
-      ).to.be.revertedWith('CarbonPathAdmin: Percentage must not exceed 100%')
+      ).to.be.revertedWith('Admin: percentage <= 1000')
     })
 
     it('only minters can mint', async function () {
@@ -197,7 +225,7 @@ describe('CarbonPathAdmin', function () {
           JSON.stringify(metadata),
           JSON.stringify(GEOJSON1)
         )
-      ).to.be.revertedWith('CarbonPathAdmin: must have minter role to mint')
+      ).to.be.revertedWith('Admin: must be a minter')
     })
 
     it('successfully mint a token', async function () {
@@ -294,14 +322,14 @@ describe('CarbonPathAdmin', function () {
     it('only minter address can update URI', async function () {
       const [owner, addr1] = await ethers.getSigners()
       await expect(this.admin.connect(addr1).updateTokenURI(0, 'test')).to.be.revertedWith(
-        'CarbonPathAdmin: must have minter role to update URI'
+        'Admin: must be a minter'
       )
     })
 
     it('can only update minted NFTs', async function () {
       const [owner, addr1] = await ethers.getSigners()
       await expect(this.admin.updateTokenURI(1, 'test')).to.be.revertedWith(
-        'ERC721: invalid token ID'
+        'ERC721URIStorage: URI set of nonexistent token'
       )
     })
 
@@ -338,14 +366,14 @@ describe('CarbonPathAdmin', function () {
     it('only minter address can update URI', async function () {
       const [owner, addr1] = await ethers.getSigners()
       await expect(this.admin.connect(addr1).updateMetadata(0, 'test')).to.be.revertedWith(
-        'CarbonPathAdmin: must have minter role to update Metadata'
+        'Admin: must be a minter'
       )
     })
 
     it('can only update minted NFTs', async function () {
       const [owner, addr1] = await ethers.getSigners()
       await expect(this.admin.updateMetadata(1, 'test')).to.be.revertedWith(
-        'ERC721: invalid token ID'
+        'NFT: must be minted'
       )
     })
 
@@ -380,13 +408,13 @@ describe('CarbonPathAdmin', function () {
     it('retired token must be at least 1', async function () {
       const [owner, cpFeeAddr, bufferAddr, nonProfitAddr, operatorAddr] = await ethers.getSigners()
       await expect(this.admin.connect(operatorAddr).retire(0, 0)).to.be.revertedWith(
-        'CarbonPathAdmin: retired amount must be at least 1'
+        'Admin: amount > 0'
       )
     })
     it('not enough balance', async function () {
       const [owner, cpFeeAddr, bufferAddr, nonProfitAddr, operatorAddr] = await ethers.getSigners()
       await expect(this.admin.connect(operatorAddr).retire(0, 16)).to.be.revertedWith(
-        'CarbonPathAdmin: not enough balance'
+        'Admin: not enough balance'
       )
     })
 
@@ -423,7 +451,7 @@ describe('CarbonPathAdmin', function () {
     it('only admin can set seller address', async function () {
       const [owner, sellerAddr, buyerAddr] = await ethers.getSigners()
       await expect(this.admin.connect(buyerAddr).setSellerAddress(buyerAddr.address)).to.be.revertedWith(
-        'CarbonPathAdmin: must have admin role'
+        'Admin: must be an admin'
       )
 
       await this.admin.setSellerAddress(sellerAddr.address)
@@ -432,13 +460,13 @@ describe('CarbonPathAdmin', function () {
 
     it('seller cannot be a zero address', async function () {
       const [owner] = await ethers.getSigners()
-      await expect(this.admin.setSellerAddress(ZERO_ADDRESS)).to.be.revertedWith('CarbonPathAdmin: zero address')
+      await expect(this.admin.setSellerAddress(ZERO_ADDRESS)).to.be.revertedWith('Admin: zero address')
     })
 
     it('only seller address can sell tokens', async function () {
       const [owner, sellerAddr, buyerAddr] = await ethers.getSigners()
       await expect(this.admin.connect(buyerAddr).sell(1)).to.be.revertedWith(
-        'CarbonPathAdmin: caller is not the seller'
+        'Admin: caller is not seller'
       )
     })
 
@@ -447,7 +475,7 @@ describe('CarbonPathAdmin', function () {
 
       await this.token.mint(sellerAddr.address, 10)
       await expect(this.admin.connect(sellerAddr).sell(0)).to.be.revertedWith(
-        'CarbonPathAdmin: sell amount must be at least 1'
+        'Admin: amount > 0'
       )
     })
 
@@ -456,7 +484,7 @@ describe('CarbonPathAdmin', function () {
 
       await this.token.mint(sellerAddr.address, 10)
       await expect(this.admin.connect(sellerAddr).sell(11)).to.be.revertedWith(
-        'CarbonPathAdmin: not enough balance'
+        'Admin: not enough balance'
       )
     })
 
@@ -484,7 +512,7 @@ describe('CarbonPathAdmin', function () {
     it('only seller address can withdraw tokens', async function () {
       const [owner, sellerAddr, buyerAddr] = await ethers.getSigners()
       await expect(this.admin.connect(buyerAddr).withdraw(1)).to.be.revertedWith(
-        'CarbonPathAdmin: caller is not the seller'
+        'Admin: caller is not seller'
       )
     })
 
@@ -493,7 +521,7 @@ describe('CarbonPathAdmin', function () {
 
       await this.token.mint(sellerAddr.address, 10)
       await expect(this.admin.connect(sellerAddr).withdraw(0)).to.be.revertedWith(
-        'CarbonPathAdmin: withdraw amount must be at least 1'
+        'Admin: amount > 0'
       )
     })
 
@@ -501,7 +529,7 @@ describe('CarbonPathAdmin', function () {
       const [owner, sellerAddr] = await ethers.getSigners()
 
       await expect(this.admin.connect(sellerAddr).withdraw(1)).to.be.revertedWith(
-        'CarbonPathAdmin: not enough balance'
+        'Admin: not enough balance'
       )
     })
 
@@ -575,7 +603,7 @@ describe('CarbonPathAdmin', function () {
       const [owner, sellerAddr, buyerAddr] = await ethers.getSigners()
 
       await expect(this.admin.connect(buyerAddr).buy(0)).to.be.revertedWith(
-        'CarbonPathAdmin: buy amount must be at least 1'
+        'Admin: amount > 0'
       )
     })
 
@@ -583,7 +611,7 @@ describe('CarbonPathAdmin', function () {
       const [owner, sellerAddr, buyerAddr] = await ethers.getSigners()
 
       await expect(this.admin.connect(buyerAddr).buy(1)).to.be.revertedWith(
-        'CarbonPathAdmin: not enough balance'
+        'Admin: not enough balance'
       )
     })
 
@@ -596,7 +624,7 @@ describe('CarbonPathAdmin', function () {
       await this.admin.connect(sellerAddr).sell(10)
 
       await expect(this.admin.connect(buyerAddr).buy(1)).to.be.revertedWith(
-        'CarbonPathAdmin: not enough stable token'
+        'Admin: not enough stable token'
       )
     })
     it('successful buy', async function () {
