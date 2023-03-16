@@ -88,7 +88,7 @@ contract CarbonPathNFT is Ownable, ERC721URIStorage {
   /// @dev Can only be called by the admin
   /// @param to address which will receive the NFT
   /// @param advanceAmount number of advanced CPCO2 tokens for the token
-  /// @param advanceAmount number of buffer pool CPCO2 tokens for the token
+  /// @param bufferAmount number of buffer pool CPCO2 tokens for the token
   /// @param tokenUri ipfs link for well documents
   /// @param _metadata contains well information
   /// @param _geoJson a geojson format for the permanence polygon of the well

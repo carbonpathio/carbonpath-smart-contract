@@ -185,7 +185,7 @@ contract CarbonPathAdmin is AccessControl {
   /// @param to address which will receive the NFT
   /// @param advanceAmount number of advanced CPCO2 tokens to be minted
   /// @param cpFeePercentage percentage of advanced CPCO2 tokens to that will be transferred to cpFeeAddress
-  /// @param advanceAmount number of buffer pool CPCO2 tokens to be minted
+  /// @param bufferAmount number of buffer pool CPCO2 tokens to be minted
   /// @param operatorAddress address that will be receiving the advanced CPCO2 tokens
   /// @param tokenUri ipfs link for well documents
   /// @param metadata contains well information
